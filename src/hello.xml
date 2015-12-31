@@ -12,17 +12,26 @@
 
 	<bean id="report" class="com.main.Report" scope="prototype" />
 	<bean id="itemProcessor" class="com.main.CustomItemProcessor" />
-
+	<!-- 定义Job与step   一个Job中可以包含多个Step 每个Step 都有三个操作
+	     reader、processor、writer  读取、处理、写入
+	     commit-interval  是指当积累到指定值时才会提交给 writer-->
 	<batch:job id="helloWorldJob">
 		<batch:step id="step1">
 			<batch:tasklet>
 				<batch:chunk reader="cvsFileItemReader" writer="xmlItemWriter"
-					processor="itemProcessor" commit-interval="10">
+					processor="itemProcessor" commit-interval="1">
 				</batch:chunk>
 			</batch:tasklet>
 		</batch:step>
 	</batch:job>
+	<!--
+	FlatFileItemReader 的主要作用就是读入一个文件，返回一组bean，他要配置的最主要的组件： 
+                   【1】 resource 文件在什么地方 
+                   【2】 lineMapper 即 这个组件将文件的每一行组装成一个bean。 
 
+       其中lineMapper 又是由  lineTokenizer 和 fieldSetMapper 
+                   【1】 lineTokenizer 作用是将文件的每一行分解成一个FieldSet 
+                   【2】 fieldSetMapper 又以 FieldSet 组成一个bean 或者一组记录。   -->
 	<bean id="cvsFileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader">
 
 		<property name="resource" value="dd.csv" />
@@ -37,7 +46,7 @@
 				</property>
 				<property name="fieldSetMapper">
 					<bean class="com.main.ReportFieldSetMapper" />
-
+                     <!--如果不需要做处理 可以使用下面这种方式  通过名称自动映射 -->
 					<!-- if no data type conversion, use BeanWrapperFieldSetMapper to map 
 						by name <bean class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper"> 
 						<property name="prototypeBeanName" value="report" /> </bean> -->
@@ -46,13 +55,21 @@
 		</property>
 
 	</bean>
-
+	<!-- XML的写入 定义 
+	  ressource    xml文件的输出位置
+ 	  rootTagName  xml文件中根标签
+	    -->
 	<bean id="xmlItemWriter" class="org.springframework.batch.item.xml.StaxEventItemWriter">
 		<property name="resource" value="file:xml/outputs/report.xml" />
 		<property name="marshaller" ref="reportMarshaller" />
 		<property name="rootTagName" value="report" />
 	</bean>
-
+	<!-- reportMarshaller负责将对象转换为xml 
+		  Marshaller主要完成编组，即将Java对象转换成XML的这么一个东东。
+		    我们在这个构造器中注入了Jaxb2Marshaller这个类，
+		    这个 bean有一个classesToBeBound属性，这个属性是一个数组。
+		    需要将即将转换成XML的Java对象配置在这里。而且这些对象需要进行 Annotation注解。
+	-->
 	<bean id="reportMarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
 		<property name="classesToBeBound">
 			<list>
